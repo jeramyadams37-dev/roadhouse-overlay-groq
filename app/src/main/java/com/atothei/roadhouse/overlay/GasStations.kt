@@ -208,7 +208,8 @@ object GasStations {
             @Suppress("DEPRECATION")
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         }
-        val timeoutRunnable = Runnable {
+        lateinit var timeoutRunnable: Runnable
+        timeoutRunnable = Runnable {
             if (done) return@Runnable
             if (!triedNetwork) {
                 // GPS gave no fix in 8 s: one network-provider attempt
