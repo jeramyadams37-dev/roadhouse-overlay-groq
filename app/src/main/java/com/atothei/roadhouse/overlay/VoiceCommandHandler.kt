@@ -2617,7 +2617,7 @@ class VoiceCommandHandler(private val context: Context) {
                 output?.speak(message)
                 output?.showCard("Groq error", message, listOf("hide"))
             }
-        })
+        }, appName = platform)
     }
 
     /** Opens Google Maps navigation; falls back to the Maps website. */

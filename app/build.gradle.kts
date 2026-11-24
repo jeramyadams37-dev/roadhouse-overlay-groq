@@ -11,7 +11,7 @@ android {
         applicationId = "com.atothei.roadhouse.overlay.groq"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
+        versionCode = 7
         versionName = "1.0"
     }
 

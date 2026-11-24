@@ -29,12 +29,14 @@ object GroqClient {
     private const val ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
     const val SYSTEM_PROMPT = "You are RoadHouse, a voice-first driving assistant for a gig delivery " +
-        "driver using Walmart Spark, DoorDash, or Instacart. You see the text of the delivery app " +
-        "screen currently open on the driver's phone. Answer briefly, in plain spoken language, " +
-        "under 40 words unless the driver asks for detail. Give facts from the screen: pay, miles, " +
-        "address, customer notes, item counts. The app computes the dollars-per-mile verdict " +
-        "separately, so do not recommend accepting or declining an offer — just report what the " +
-        "screen says. If the screen does not contain the answer, say so plainly."
+        "driver. You see the text of whatever app is currently open on the driver's phone — a " +
+        "delivery app, a chat app, a browser, any app. Answer briefly, in plain spoken language, " +
+        "under 40 words unless the driver asks for detail. Answer the driver's question from what " +
+        "is actually on the screen: on a delivery screen, give pay, miles, address, customer " +
+        "notes, item counts; on any other screen, describe or answer from the text that is there. " +
+        "Never invent details the screen does not show. The app computes the dollars-per-mile " +
+        "verdict separately, so do not recommend accepting or declining an offer — just report what " +
+        "the screen says. If the screen does not contain the answer, say so plainly."
 
     interface Callback {
         fun onResult(text: String)
@@ -71,11 +73,19 @@ object GroqClient {
         post(apiKey, body, callback)
     }
 
-    fun ask(apiKey: String, userPrompt: String, screenText: String, callback: Callback) {
+    /**
+     * Ask about the screen currently open on the phone — any app, not
+     * just a delivery app. appName (e.g. "Spark", "Other app") is passed
+     * through so the model knows what kind of screen it is looking at;
+     * blank for callers with no screen (key test).
+     */
+    fun ask(apiKey: String, userPrompt: String, screenText: String, callback: Callback, appName: String = "") {
         Thread {
             try {
                 val prompt = buildString {
-                    append("Screen text from the delivery app:\n")
+                    append("Screen text from the app currently open on the driver's phone")
+                    if (appName.isNotBlank()) append(" (app: $appName)")
+                    append(":\n")
                     append(screenText.take(8000))
                     append("\n\nDriver question: ")
                     append(userPrompt)

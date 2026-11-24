@@ -56,7 +56,8 @@ object BestHours {
                 null
             }
             if (date != null) {
-                val cal = Calendar.getInstance().apply { time = date }
+                val cal = Calendar.getInstance()
+                cal.time = date
                 val dow = cal.get(Calendar.DAY_OF_WEEK)
                 val dAcc = byDay.getOrPut(dow) { MutableAcc() }
                 dAcc.count++

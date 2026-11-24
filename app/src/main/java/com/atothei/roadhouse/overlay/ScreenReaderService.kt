@@ -74,7 +74,7 @@ class ScreenReaderService : AccessibilityService() {
             ReadStatus.SHADE_DOWN ->
                 "I can't see the app right now — close the notification shade and ask again."
             ReadStatus.NO_APP_WINDOW ->
-                "I can't see any app screen right now. Open your delivery app first, then ask again."
+                "I can't see any app screen right now. Open any app first, then ask again."
             ReadStatus.NO_TEXT ->
                 "I can see the app but there's no readable text on this screen right now."
             ReadStatus.OK -> ""

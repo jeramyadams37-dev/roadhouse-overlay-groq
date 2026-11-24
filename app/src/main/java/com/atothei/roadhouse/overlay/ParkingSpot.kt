@@ -5,7 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-data class ParkingSpot(
+data class ParkingSpotRecord(
     val id: String,
     val text: String,
     val date: String,
@@ -22,12 +22,12 @@ data class ParkingSpot(
 object ParkingSpot {
     private const val FILE_NAME = "parking.json"
 
-    fun save(context: Context, text: String): ParkingSpot? {
+    fun save(context: Context, text: String): ParkingSpotRecord? {
         return try {
             val clean = text.trim()
             if (clean.isEmpty()) return null
             val (date, time) = DeliveryLog.nowParts()
-            val spot = ParkingSpot(
+            val spot = ParkingSpotRecord(
                 id = System.currentTimeMillis().toString(),
                 text = clean.take(200),
                 date = date,
@@ -50,11 +50,11 @@ object ParkingSpot {
         }
     }
 
-    fun latest(context: Context): ParkingSpot? {
+    fun latest(context: Context): ParkingSpotRecord? {
         return try {
             val arr = readAll(context)
             val obj = arr.optJSONObject(0) ?: return null
-            ParkingSpot(
+            ParkingSpotRecord(
                 id = obj.optString("id"),
                 text = obj.optString("text"),
                 date = obj.optString("date"),
