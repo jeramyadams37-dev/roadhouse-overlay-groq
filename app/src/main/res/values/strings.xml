@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RoadHouse Overlay Groq</string>
+    <string name="settings_title">RoadHouse Overlay Groq Settings</string>
+    <string name="accessibility_service_label">RoadHouse Overlay Groq</string>
+    <string name="accessibility_service_description">Reads the text of the delivery app on screen so RoadHouse Overlay Groq can check offers, find addresses, and answer your questions by voice. It only reads — it never taps or types in any app.</string>
+
+    <string name="main_intro">Voice-first driver assistant. It reads your delivery app screen, checks the offer in dollars per mile, and talks back — hands-free.</string>
+    <string name="main_steps_title">First-run setup</string>
+    <string name="main_steps">1. Allow the overlay permission.\n2. Turn on RoadHouse Overlay Groq in Accessibility settings (screen reading).\n3. Allow the microphone.\n4. Paste your Groq key and set your $/mile floor in Settings.\n5. Tap Start overlay, then switch to Spark, DoorDash, or Instacart.</string>
+
+    <string name="status_overlay_ok">Overlay permission: granted</string>
+    <string name="status_overlay_missing">Overlay permission: NOT granted</string>
+    <string name="status_accessibility_ok">Screen reading: on</string>
+    <string name="status_accessibility_missing">Screen reading: OFF — enable RoadHouse Overlay Groq in Accessibility settings</string>
+    <string name="status_mic_ok">Microphone: granted</string>
+    <string name="status_mic_missing">Microphone: NOT granted</string>
+    <string name="status_key_ok">Groq key: saved</string>
+    <string name="status_key_missing">Groq key: NOT set — add it in Settings</string>
+    <string name="status_service_running">Overlay: running</string>
+    <string name="status_service_stopped">Overlay: stopped</string>
+
+    <string name="btn_overlay_permission">1. Allow overlay permission</string>
+    <string name="btn_accessibility">2. Turn on screen reading</string>
+    <string name="btn_mic">3. Allow microphone</string>
+    <string name="btn_settings">4. Settings (Groq key, $/mile floor)</string>
+    <string name="btn_start_overlay">5. Start overlay</string>
+    <string name="btn_stop_overlay">Stop overlay</string>
+    <string name="btn_end_shift">End-of-shift summary</string>
+    <string name="btn_review_offers">Review offers</string>
+    <string name="end_shift_title">End of shift</string>
+    <string name="review_title">Review offers</string>
+
+    <string name="overlay_button_description">RoadHouse Overlay Groq — tap to listen, long-press to check this offer</string>
+
+    <string name="settings_key_label">Groq API key (bring your own — free at console.groq.com)</string>
+    <string name="settings_key_hint">Paste your Groq API key here</string>
+    <string name="settings_floor_label">Minimum dollars per mile (offer floor)</string>
+    <string name="settings_floor_hint">1.00</string>
+    <string name="settings_goal_label">Daily earnings goal in dollars (blank = off)</string>
+    <string name="settings_goal_hint">150</string>
+    <string name="settings_mpg_label">Vehicle MPG (for fuel math)</string>
+    <string name="settings_mpg_hint">25</string>
+    <string name="settings_fuel_price_label">Fuel price per gallon in dollars</string>
+    <string name="settings_fuel_price_hint">3.50</string>
+    <string name="settings_accept_tap_label">Log a delivery when you tap Accept in a delivery app (off by default — only when on)</string>
+    <string name="seen_count">Offers seen: %1$d</string>
+    <string name="btn_export_seen">Share seen offers</string>
+    <string name="btn_clear_seen">Clear seen offers</string>
+    <string name="settings_voice_label">Voice answers on</string>
+    <string name="settings_size_label">Overlay button size</string>
+    <string name="settings_size_small">Small</string>
+    <string name="settings_size_medium">Medium</string>
+    <string name="settings_size_large">Large</string>
+    <string name="log_count">Deliveries logged: %1$d</string>
+    <string name="settings_weather_label">Weather city (pre-shift check)</string>
+    <string name="settings_weather_hint">Petersburg, IL</string>
+    <string name="offer_count">Offers checked: %1$d</string>
+    <string name="note_count">Store notes saved: %1$d</string>
+    <string name="settings_speak_offers_label">Speak new offers out loud (off by default — only when on)</string>
+    <string name="address_note_count">Address notes saved: %1$d</string>
+    <string name="btn_export_address_notes">Share address notes</string>
+    <string name="btn_clear_address_notes">Clear address notes</string>
+    <string name="btn_location_permission">Allow location for weather</string>
+    <string name="btn_export_offers">Share offer history</string>
+    <string name="btn_clear_offers">Clear offer history</string>
+    <string name="btn_export_notes">Share store notes</string>
+    <string name="btn_clear_notes">Clear store notes</string>
+    <string name="btn_save">Save settings</string>
+    <string name="btn_test_key">Test Groq key</string>
+    <string name="btn_export_log">Share delivery log</string>
+    <string name="btn_clear_log">Clear delivery log</string>
+    <string name="btn_open_accessibility">Open Accessibility settings</string>
+    <string name="camera_title">RoadHouse Camera</string>
+    <string name="btn_stop_recording">Stop recording</string>
+    <string name="notification_service_label">RoadHouse Overlay Groq notifications</string>
+    <string name="btn_call_permission">Allow calls and messages</string>
+    <string name="btn_notification_access">Allow notification access</string>
+    <string name="expense_count">Expenses logged: %1$d</string>
+    <string name="tip_count">Tips logged: %1$d</string>
+</resources>

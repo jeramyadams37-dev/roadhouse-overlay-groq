@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoadHouse Overlay Groq</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: transparent; font-family: sans-serif; }
+  #card {
+    background: #111827;
+    color: #F9FAFB;
+    border-radius: 16px 16px 0 0;
+    border-top: 3px solid #F59E0B;
+    padding: 14px 16px 20px;
+    min-height: 100%;
+  }
+  #header { display: flex; align-items: center; justify-content: space-between; }
+  #title { font-size: 17px; font-weight: bold; }
+  #app { font-size: 12px; color: #F59E0B; }
+  #close {
+    background: none; border: none; color: #9CA3AF;
+    font-size: 22px; line-height: 1; padding: 4px 8px; cursor: pointer;
+  }
+  #listening { font-size: 13px; color: #F59E0B; margin-top: 6px; min-height: 18px; }
+  #body { font-size: 15px; line-height: 1.5; white-space: pre-wrap; margin-top: 8px; }
+  #body .good { color: #4ADE80; font-weight: bold; }
+  #body .bad { color: #F87171; font-weight: bold; }
+  #buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  button.action {
+    background: #F59E0B; color: #111827; border: none; border-radius: 999px;
+    padding: 10px 16px; font-size: 15px; font-weight: bold; cursor: pointer;
+  }
+  button.action.secondary { background: #374151; color: #F9FAFB; }
+  #askrow { display: flex; gap: 8px; margin-top: 12px; }
+  #ask {
+    flex: 1; background: #1F2937; color: #F9FAFB; border: 1px solid #374151;
+    border-radius: 999px; padding: 10px 14px; font-size: 15px;
+  }
+</style>
+</head>
+<body>
+<div id="card">
+  <div id="header">
+    <div>
+      <div id="title">RoadHouse</div>
+      <div id="app"></div>
+    </div>
+    <button id="close" onclick="RoadHouse.hideCard()">×</button>
+  </div>
+  <div id="listening"></div>
+  <div id="body">Tap Listen and talk, or tap Check offer.</div>
+  <div id="buttons"></div>
+  <div id="askrow">
+    <input id="ask" type="text" placeholder="Ask about this screen…" />
+    <button class="action" onclick="askTyped()">Ask</button>
+  </div>
+</div>
+<script>
+  var currentAddress = "";
+
+  function el(id) { return document.getElementById(id); }
+
+  function showCard(title, body, actions) {
+    el('title').textContent = title;
+    el('listening').textContent = '';
+    var html = escapeHtml(body);
+    html = html.replace(/Take it\./g, '<span class="good">Take it.</span>');
+    html = html.replace(/Skip it\./g, '<span class="bad">Skip it.</span>');
+    el('body').innerHTML = html;
+    renderButtons(actions || ['hide']);
+    try { el('app').textContent = RoadHouse.getForegroundApp(); } catch (e) {}
+  }
+
+  function setListeningText(text) {
+    el('listening').textContent = 'Heard: ' + text;
+  }
+
+  function renderButtons(actions) {
+    var wrap = el('buttons');
+    wrap.innerHTML = '';
+    actions.forEach(function (a) {
+      var b = document.createElement('button');
+      b.className = 'action' + (a === 'hide' ? ' secondary' : '');
+      if (a === 'listen') { b.textContent = 'Listen'; b.onclick = function () { RoadHouse.startListening(); }; }
+      else if (a === 'check') { b.textContent = 'Check offer'; b.onclick = checkOffer; }
+      else if (a === 'navigate') { b.textContent = 'Navigate'; b.onclick = function () { RoadHouse.navigate(currentAddress); }; }
+      else if (a === 'log') { b.textContent = 'Log delivery'; b.onclick = logDelivery; }
+      else if (a === 'took') { b.textContent = 'Took it'; b.onclick = function () { recordOutcome('took'); }; }
+      else if (a === 'skipped') { b.textContent = 'Skipped it'; b.onclick = function () { recordOutcome('skipped'); }; }
+      else if (a === 'preshift') { b.textContent = 'Pre-shift check'; b.onclick = function () { RoadHouse.startPreShift(); }; }
+      else if (a === 'earnings') { b.textContent = 'Earnings'; b.onclick = function () { showEarnings('today'); }; }
+      else if (a === 'endshift') { b.textContent = 'End shift'; b.onclick = showShiftSummary; }
+      else if (a === 'weather') { b.textContent = 'Weather'; b.onclick = function () { RoadHouse.weather(); }; }
+      else if (a === 'hide') { b.textContent = 'Hide'; b.onclick = function () { RoadHouse.hideCard(); }; }
+      else if (a === 'settings') { b.textContent = 'Settings'; b.onclick = function () { RoadHouse.openSettings(); }; }
+      wrap.appendChild(b);
+    });
+  }
+
+  function checkOffer() {
+    // "Reading…" state while the fresh read is in flight, so the card
+    // never sits on the previous answer looking current.
+    el('title').textContent = 'Reading…';
+    el('body').textContent = 'Reading the screen…';
+    renderButtons(['hide']);
+    try {
+      var r = JSON.parse(RoadHouse.checkOffer());
+      if (r.ok === false) {
+        el('title').textContent = "Can't see the screen";
+        el('body').textContent = r.error || 'Could not check this offer.';
+        renderButtons(['hide']);
+        return;
+      }
+      currentAddress = r.address || '';
+      var lines = [];
+      if (r.isBatch) lines.push('Batch: ' + (r.stops ? r.stops.length : 0) + ' stops');
+      if (r.pay !== null) lines.push('Pay: $' + r.pay.toFixed(2));
+      if (r.miles !== null) lines.push('Miles: ' + r.miles.toFixed(1));
+      if (r.perMile !== null) lines.push('Per mile: $' + r.perMile.toFixed(2));
+      lines.push('Floor: $' + r.floor.toFixed(2) + ' / mile');
+      if (r.isBatch && r.stops) {
+        r.stops.forEach(function (s, i) {
+          var stopLine = 'Stop ' + (i + 1) + ': ' + s.address;
+          if (s.miles !== null) stopLine += ' — ' + s.miles.toFixed(1) + ' mi';
+          if (s.pay !== null) stopLine += ' — $' + s.pay.toFixed(2);
+          lines.push(stopLine);
+          if (s.addressNotes) {
+            s.addressNotes.forEach(function (n) { lines.push('  Notes: ' + n); });
+          }
+        });
+      } else if (r.address) {
+        lines.push('Address: ' + r.address);
+      }
+      if (r.memory) { lines.push(''); lines.push(r.memory); }
+      if (r.notes) {
+        lines.push('');
+        lines.push('Notes for this store:');
+        r.notes.forEach(function (n) { lines.push('• ' + n); });
+      }
+      if (!r.isBatch && r.addressNotes) {
+        lines.push('');
+        lines.push('Notes for this address:');
+        r.addressNotes.forEach(function (n) { lines.push('• ' + n); });
+      }
+      lines.push('');
+      lines.push(r.spoken);
+      if (r.readAge) { lines.push(''); lines.push('Screen ' + r.readAge + ' · ' + r.platform); }
+      el('title').textContent = 'Offer check — ' + r.platform;
+      el('body').innerHTML = escapeHtml(lines.join('\n'))
+        .replace(/Take it\./g, '<span class="good">Take it.</span>')
+        .replace(/Skip it\./g, '<span class="bad">Skip it.</span>');
+      renderButtons(['navigate', 'log', 'took', 'skipped', 'hide']);
+      try { el('app').textContent = r.platform; } catch (e) {}
+      RoadHouse.speak(r.spoken);
+    } catch (e) {
+      el('body').textContent = 'Could not check this offer: ' + e.message;
+    }
+  }
+
+  function recordOutcome(outcome) {
+    try {
+      var r = JSON.parse(RoadHouse.recordOfferOutcome(outcome));
+      el('title').textContent = 'Offer recorded';
+      el('body').textContent = r.message || 'Recorded.';
+      renderButtons(['hide']);
+    } catch (e) {
+      el('body').textContent = 'Could not record that: ' + e.message;
+    }
+  }
+
+  function showEarnings(range) {
+    try {
+      var r = JSON.parse(RoadHouse.earningsSummary(range || 'today'));
+      el('title').textContent = 'Earnings — ' + r.label;
+      el('body').textContent = r.text;
+      renderButtons(['hide']);
+      RoadHouse.speak(r.text);
+    } catch (e) {
+      el('body').textContent = 'Could not tally earnings: ' + e.message;
+    }
+  }
+
+  function showShiftSummary() {
+    try {
+      var r = JSON.parse(RoadHouse.shiftSummary());
+      el('title').textContent = 'End of shift';
+      el('body').textContent = r.text;
+      renderButtons(['hide']);
+      RoadHouse.speak(r.text);
+    } catch (e) {
+      el('body').textContent = 'Could not sum up the shift: ' + e.message;
+    }
+  }
+
+  function logDelivery() {
+    try {
+      var r = JSON.parse(RoadHouse.logDelivery());
+      el('body').textContent = r.ok
+        ? (r.alreadyLogged ? 'Already logged. ' : 'Logged. ') + r.count + ' deliveries in the log.'
+        : (r.error || 'Could not save that delivery. Try again.');
+      renderButtons(['hide']);
+    } catch (e) {
+      el('body').textContent = 'Could not save that delivery: ' + e.message;
+    }
+  }
+
+  function askTyped() {
+    var q = el('ask').value.trim();
+    if (!q) return;
+    el('ask').value = '';
+    el('title').textContent = 'Thinking…';
+    el('body').textContent = 'Asking Groq about this screen…';
+    RoadHouse.askGroq(q);
+  }
+
+  el('ask').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') askTyped();
+  });
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Default buttons when the card first opens.
+  renderButtons(['listen', 'check', 'preshift', 'earnings', 'endshift', 'weather', 'hide']);
+  try { el('app').textContent = RoadHouse.getForegroundApp(); } catch (e) {}
+</script>
+</body>
+</html>
