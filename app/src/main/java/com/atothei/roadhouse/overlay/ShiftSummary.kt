@@ -7,7 +7,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-data class ShiftSummary(
+data class ShiftSummaryResult(
     val label: String,
     val count: Int,
     val totalPay: Double,
@@ -39,12 +39,12 @@ data class PlatformSlice(
  */
 object ShiftSummary {
 
-    fun summarize(context: Context): ShiftSummary {
+    fun summarize(context: Context): ShiftSummaryResult {
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         return summarizeForDate(context, today)
     }
 
-    fun summarizeForDate(context: Context, date: String): ShiftSummary {
+    fun summarizeForDate(context: Context, date: String): ShiftSummaryResult {
         var count = 0
         var pay = 0.0
         var miles = 0.0
@@ -84,7 +84,7 @@ object ShiftSummary {
         val slices = byPlatform.entries.map {
             PlatformSlice(it.key, it.value.count, it.value.pay, it.value.miles)
         }
-        return ShiftSummary(
+        return ShiftSummaryResult(
             label = "Today",
             count = count,
             totalPay = pay,
@@ -105,7 +105,7 @@ object ShiftSummary {
     }
 
     /** Short spoken + card text. */
-    fun text(s: ShiftSummary): String {
+    fun text(s: ShiftSummaryResult): String {
         if (s.count == 0) {
             return "Nothing logged today yet, so there is no shift to sum up. Log a delivery first."
         }
