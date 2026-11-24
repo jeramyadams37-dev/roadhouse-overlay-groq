@@ -28,6 +28,16 @@ object PlaceSearch {
 
     data class Place(val name: String, val miles: Double, val detail: String?)
 
+    // Public Overpass mirrors, tried in order. Same failure class as
+    // GasStations.kt: the main instance rate-limits shared IPs
+    // (Starlink CGNAT), so a refused or timed-out attempt falls
+    // through to the next mirror instead of failing.
+    private val OVERPASS_URLS = listOf(
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter"
+    )
+
     /** Which kind of place is this command asking for, or null. */
     fun kindFor(lower: String): Kind? {
         return when {
@@ -65,20 +75,28 @@ object PlaceSearch {
     }
 
     private fun queryOverpass(lat: Double, lon: Double, kind: Kind): List<Place>? {
+        val filter = when (kind) {
+            Kind.BATHROOM -> "node[\"amenity\"=\"toilets\"](around:10000,$lat,$lon);"
+            Kind.GAS -> "node[\"amenity\"=\"fuel\"](around:10000,$lat,$lon);"
+            Kind.FOOD -> "node[\"amenity\"~\"^(fast_food|restaurant|cafe)$\"](around:10000,$lat,$lon);"
+        }
+        val query = "[out:json][timeout:25];($filter);out 20;"
+        for (url in OVERPASS_URLS) {
+            val result = tryMirror(url, query, lat, lon, kind)
+            if (result != null) return result
+        }
+        return null
+    }
+
+    /** One attempt against one Overpass mirror. Null on any failure. */
+    private fun tryMirror(url: String, query: String, lat: Double, lon: Double, kind: Kind): List<Place>? {
         return try {
-            val filter = when (kind) {
-                Kind.BATHROOM -> "node[\"amenity\"=\"toilets\"](around:10000,$lat,$lon);"
-                Kind.GAS -> "node[\"amenity\"=\"fuel\"](around:10000,$lat,$lon);"
-                Kind.FOOD -> "node[\"amenity\"~\"^(fast_food|restaurant|cafe)$\"](around:10000,$lat,$lon);"
-            }
-            val query = "[out:json][timeout:15];($filter);out 20;"
-            val url = URL("https://overpass-api.de/api/interpreter")
-            val conn = (url.openConnection() as HttpURLConnection).apply {
+            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
                 setRequestProperty("User-Agent", "RoadHouseOverlay/1.0 (driver assistant)")
-                connectTimeout = 15000
-                readTimeout = 15000
+                connectTimeout = 10000
+                readTimeout = 30000
                 doOutput = true
             }
             conn.outputStream.use {

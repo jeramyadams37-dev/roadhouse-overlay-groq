@@ -27,11 +27,13 @@ import kotlin.math.sqrt
 /**
  * Nearest gas station by voice — free, no key, no signup.
  * - Location: one-shot current GPS (a fresh last-known fix first,
- *   otherwise one single update with an 8-second timeout). Never polls,
+ *   otherwise one single update with an 8-second timeout, then one
+ *   network-provider update with a 6-second timeout). Never polls,
  *   never tracks in the background.
- * - Search: Overpass API (overpass-api.de) for nodes tagged
- *   amenity=fuel within 10 km of the fix. The closest 1–2 are spoken
- *   with their distance in miles.
+ * - Search: Overpass API for nodes tagged amenity=fuel within 10 km
+ *   of the fix, tried against three public mirrors in order
+ *   (overpass-api.de, overpass.kumi.systems, overpass.private.coffee).
+ *   The closest 1–2 are spoken with their distance in miles.
  *
  * FAIL-SOFT, always: if there is no location fix, no network, or the
  * lookup fails for any reason, the callback gets null and the caller
@@ -42,7 +44,14 @@ object GasStations {
 
     data class Station(val name: String, val miles: Double)
 
-    private const val OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+    // Public Overpass mirrors, tried in order. The main instance
+    // rate-limits shared IPs (Starlink CGNAT), so a refused or timed-out
+    // attempt falls through to the next mirror instead of failing.
+    private val OVERPASS_URLS = listOf(
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter"
+    )
     private const val USER_AGENT = "RoadHouseOverlay/1.0 (driver assistant)"
     private const val SEARCH_RADIUS_M = 10000
     private const val EARTH_RADIUS_MILES = 3958.8
@@ -68,7 +77,7 @@ object GasStations {
                 latLon = result
                 latch.countDown()
             }
-            latch.await(12, TimeUnit.SECONDS)
+            latch.await(18, TimeUnit.SECONDS)
             val fix = latLon
             if (fix == null) {
                 callback.invoke(null)
@@ -80,16 +89,25 @@ object GasStations {
 
     /** Overpass query for fuel stations around a fix. Null on any failure. */
     private fun queryOverpass(lat: Double, lon: Double): List<Station>? {
+        val query = "[out:json][timeout:25];" +
+            "node[\"amenity\"=\"fuel\"](around:$SEARCH_RADIUS_M,$lat,$lon);" +
+            "out body 30;"
+        for (url in OVERPASS_URLS) {
+            val result = tryMirror(url, query, lat, lon)
+            if (result != null) return result
+        }
+        return null
+    }
+
+    /** One attempt against one Overpass mirror. Null on any failure. */
+    private fun tryMirror(url: String, query: String, lat: Double, lon: Double): List<Station>? {
         return try {
-            val query = "[out:json][timeout:20];" +
-                "node[\"amenity\"=\"fuel\"](around:$SEARCH_RADIUS_M,$lat,$lon);" +
-                "out body 30;"
-            val conn = (URL(OVERPASS_URL).openConnection() as HttpURLConnection).apply {
+            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("User-Agent", USER_AGENT)
                 setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                connectTimeout = 15000
-                readTimeout = 20000
+                connectTimeout = 10000
+                readTimeout = 30000
                 doOutput = true
             }
             OutputStreamWriter(conn.outputStream, "UTF-8").use {
@@ -136,7 +154,8 @@ object GasStations {
 
     /**
      * One-shot current location: a fresh last-known fix first (under 30
-     * minutes old), otherwise one single location update with an 8-second
+     * minutes old), otherwise one single GPS update with an 8-second
+     * timeout, then one single network-provider update with a 6-second
      * timeout. Never polls, never tracks in the background. Calls back
      * with null when there is no permission, no provider, or no fix.
      */
@@ -171,6 +190,7 @@ object GasStations {
         }
         val mainHandler = Handler(Looper.getMainLooper())
         var done = false
+        var triedNetwork = false
         val listener = object : LocationListener {
             override fun onLocationChanged(location: Location) {
                 if (done) return
@@ -190,6 +210,23 @@ object GasStations {
         }
         val timeoutRunnable = Runnable {
             if (done) return@Runnable
+            if (!triedNetwork) {
+                // GPS gave no fix in 8 s: one network-provider attempt
+                // with its own 6 s timeout before giving up.
+                triedNetwork = true
+                try {
+                    lm.removeUpdates(listener)
+                } catch (e: Exception) {
+                }
+                try {
+                    lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, Looper.getMainLooper())
+                    mainHandler.postDelayed(timeoutRunnable, 6000)
+                } catch (e: Exception) {
+                    done = true
+                    callback(null)
+                }
+                return@Runnable
+            }
             done = true
             try {
                 lm.removeUpdates(listener)
@@ -203,6 +240,7 @@ object GasStations {
         } catch (e: Exception) {
             try {
                 lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, Looper.getMainLooper())
+                triedNetwork = true
             } catch (e2: Exception) {
                 if (!done) {
                     done = true
